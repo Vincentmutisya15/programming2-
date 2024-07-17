@@ -1,0 +1,135 @@
+import tkinter as tk
+from tkinter import messagebox
+from datetime import datetime, timedelta
+
+class Vehicle:
+    def __init__(self, number_plate, vehicle_type):
+        self.number_plate = number_plate
+        self.vehicle_type = vehicle_type
+        self.entry_time = None
+        self.exit_time = None
+
+    def set_entry_time(self, entry_time):
+        self.entry_time = entry_time
+
+    def set_exit_time(self, exit_time):
+        self.exit_time = exit_time
+
+class ParkingSpace:
+    def __init__(self, space_id):
+        self.space_id = space_id
+        self.occupied = False
+        self.vehicle = None
+
+    def park_vehicle(self, vehicle):
+        self.vehicle = vehicle
+        self.occupied = True
+
+    def remove_vehicle(self):
+        vehicle_info = {
+            'number_plate': self.vehicle.number_plate,
+            'entry_time': self.vehicle.entry_time,
+            'exit_time': self.vehicle.exit_time,
+            'parking_duration': self.vehicle.exit_time - self.vehicle.entry_time,
+            'space_id': self.space_id
+        }
+        self.vehicle = None
+        self.occupied = False
+        return vehicle_info
+
+class ParkingLot:
+    def __init__(self, num_spaces=12):
+        self.spaces = [ParkingSpace(i+1) for i in range(num_spaces)]
+        self.fees = {
+            'suv': 1.2,
+            'minibus': 1.5,
+            'lorry': 2.0,
+            'bus': 2.5,
+            'truck': 3.0
+        }
+
+    def find_available_space(self):
+        for space in self.spaces:
+            if not space.occupied:
+                return space
+        return None
+
+    def park_vehicle(self, vehicle):
+        space = self.find_available_space()
+        if space:
+            space.park_vehicle(vehicle)
+            return space.space_id
+        else:
+            return None
+
+    def remove_vehicle(self, number_plate):
+        for space in self.spaces:
+            if space.occupied and space.vehicle.number_plate == number_plate:
+                vehicle_info = space.remove_vehicle()
+                fee = self.calculate_fee(vehicle_info['parking_duration'], vehicle_info['number_plate'])
+                return vehicle_info, fee
+        return None, 0
+
+    def calculate_fee(self, duration, number_plate):
+        hours = duration.total_seconds() / 3600
+        for space in self.spaces:
+            if space.vehicle and space.vehicle.number_plate == number_plate:
+                rate = self.fees[space.vehicle.vehicle_type]
+                return rate * hours
+        return 0
+
+    def monitor_occupancy(self):
+        occupied = sum(space.occupied for space in self.spaces)
+        return occupied, len(self.spaces)
+
+def calculate_fee():
+    vehicle_type = vehicle_type_var.get()
+    entry_time_str = entry_time_var.get()
+    exit_time_str = exit_time_var.get()
+    number_plate = number_plate_var.get()
+
+    try:
+        entry_time = datetime.strptime(entry_time_str, '%Y-%m-%d %H:%M:%S')
+        exit_time = datetime.strptime(exit_time_str, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        messagebox.showerror("Invalid Time Format", "Please enter time in the format YYYY-MM-DD HH:MM:SS")
+        return
+
+    vehicle = Vehicle(number_plate, vehicle_type)
+    vehicle.set_entry_time(entry_time)
+    vehicle.set_exit_time(exit_time)
+
+    space_id = parking_lot.park_vehicle(vehicle)
+    if space_id is None:
+        messagebox.showerror("Parking Lot Full", "No available parking spaces.")
+        return
+
+    vehicle_info, fee = parking_lot.remove_vehicle(number_plate)
+    if vehicle_info:
+        messagebox.showinfo("Parking Fee", f"Vehicle {vehicle_info['number_plate']} left space {vehicle_info['space_id']} after {vehicle_info['parking_duration']}. Fee: ${fee:.2f}")
+    else:
+        messagebox.showerror("Error", "Vehicle not found in the parking lot.")
+
+parking_lot = ParkingLot()
+
+root = tk.Tk()
+root.title("Parking Lot Management System")
+
+tk.Label(root, text="Vehicle Type").grid(row=0, column=0)
+tk.Label(root, text="Entry Time (YYYY-MM-DD HH:MM:SS)").grid(row=1, column=0)
+tk.Label(root, text="Exit Time (YYYY-MM-DD HH:MM:SS)").grid(row=2, column=0)
+tk.Label(root, text="Number Plate").grid(row=3, column=0)
+
+vehicle_type_var = tk.StringVar()
+entry_time_var = tk.StringVar()
+exit_time_var = tk.StringVar()
+number_plate_var = tk.StringVar()
+
+tk.Entry(root, textvariable=vehicle_type_var).grid(row=0, column=1)
+tk.Entry(root, textvariable=entry_time_var).grid(row=1, column=1)
+tk.Entry(root, textvariable=exit_time_var).grid(row=2, column=1)
+tk.Entry(root, textvariable=number_plate_var).grid(row=3, column=1)
+
+tk.Button(root, text="Calculate Fee", command=calculate_fee).grid(row=4, column=0, columnspan=2)
+
+root.mainloop()
